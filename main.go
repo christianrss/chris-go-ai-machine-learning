@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -59,7 +60,7 @@ func main() {
 	var m Maze
 	var maze, searchType string
 
-	flag.StringVar(&maze, "file", "maze.txt", "maze file")
+	flag.StringVar(&maze, "file", "data/maze.txt", "maze file")
 	flag.StringVar(&searchType, "search", "dfs", "search type")
 	flag.Parse()
 
@@ -69,7 +70,62 @@ func main() {
 		os.Exit((1))
 	}
 
-	fmt.Println("maze height/width: ", m.Height, m.Width)
+	startTime := time.Now()
+
+	switch searchType {
+	case "dfs":
+		m.SearchType = DFS
+		solveDFS(&m)
+	default:
+		fmt.Println("Invalid search type.")
+		os.Exit(1)
+	}
+
+	if len(m.Solution.Actions) > 0 {
+		fmt.Println("Solution:")
+		m.printMaze()
+		fmt.Println("Solution is", len(m.Solution.Cells), "steps.")
+		fmt.Println("Time to solve:", time.Since(startTime))
+	} else {
+		fmt.Println(("No solution."))
+	}
+
+	fmt.Println("Explored", len(m.Explored), "nodes.")
+}
+
+func (g *Maze) printMaze() {
+	for r, row := range g.Walls {
+		for c, col := range row {
+			if col.wall {
+				fmt.Print("█")
+			} else if g.Start.Row == col.State.Row && g.Start.Col == col.State.Col {
+				fmt.Print("A")
+			} else if g.Goal.Row == col.State.Row && g.Goal.Col == col.State.Col {
+				fmt.Print("B")
+			} else if g.inSolution(Point{r, c}) {
+				fmt.Print("*")
+			} else {
+				fmt.Print(" ")
+			}
+		}
+		fmt.Println()
+	}
+}
+
+func (g *Maze) inSolution(x Point) bool {
+	for _, step := range g.Solution.Cells {
+		if step.Row == x.Row && step.Col == x.Col {
+			return true
+		}
+	}
+	return false
+}
+
+func solveDFS(m *Maze) {
+	var s DepthFirstSearch
+	s.Game = m
+	fmt.Println("Goal is", s.Game.Goal)
+	s.Solve()
 }
 
 func (g *Maze) Load(fileName string) error {
@@ -136,6 +192,10 @@ func (g *Maze) Load(fileName string) error {
 				wall.State.Row = i
 				wall.State.Col = j
 				wall.wall = false
+			case "#":
+				wall.State.Row = i
+				wall.State.Row = j
+				wall.wall = true
 			default:
 				continue
 			}
